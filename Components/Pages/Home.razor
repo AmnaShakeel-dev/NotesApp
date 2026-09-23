@@ -1,0 +1,103 @@
+﻿@page "/"
+@inject NoteDatabase Db
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudText Typo="Typo.h5">My Notes</MudText>
+        <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddNote" />
+    </MudStack>
+
+    <MudTextField @bind-Value="_search" @bind-Value:after="Filter" Placeholder="Search notes..."
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined"
+                  Class="mb-4" />
+
+    @if (!_filtered.Any())
+    {
+        <MudText Align="Align.Center" Class="mt-8" Color="Color.Secondary">No notes yet — tap + to add one.</MudText>
+    }
+
+    <MudGrid>
+        @foreach (var note in _filtered)
+        {
+            <MudItem xs="6">
+                <MudPaper Class="pa-3" Style="@($"background:{note.Color};min-height:140px;border-radius:12px;")">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.subtitle1"><b>@note.Title</b></MudText>
+                        <MudIconButton
+                        Icon="@(note.Pinned ? Icons.Material.Filled.PushPin : Icons.Material.Outlined.PushPin)"
+                        Size="Size.Small" OnClick="() => TogglePin(note)" />
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Class="mb-2">@note.Content</MudText>
+                    <MudChip T="string" Size="Size.Small">@note.Category</MudChip>
+                    <MudStack Row="true" Justify="Justify.FlexEnd">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                       OnClick="() => EditNote(note)" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                       OnClick="() => DeleteNote(note)" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+</MudContainer>
+
+@code {
+    List<Models.Note> _all = new();
+    List<Models.Note> _filtered = new();
+    string _search = "";
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    async Task Load()
+    {
+        _all = await Db.GetAllAsync();
+        Filter();
+    }
+
+    void Filter()
+    {
+        _filtered = string.IsNullOrWhiteSpace(_search)
+            ? _all
+            : _all.Where(n => n.Title.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                            || n.Content.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                            || n.Category.Contains(_search, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    async Task AddNote()
+    {
+        var dialog = await DialogService.ShowAsync<Dialogs.NoteDialog>("New Note",
+            new DialogParameters { ["Note"] = new Models.Note() });
+        var result = await dialog.Result;
+        if (!result!.Canceled)
+        {
+            await Db.SaveAsync((Models.Note)result.Data!);
+            await Load();
+        }
+    }
+
+    async Task EditNote(Models.Note note)
+    {
+        var dialog = await DialogService.ShowAsync<Dialogs.NoteDialog>("Edit Note",
+            new DialogParameters { ["Note"] = note });
+        var result = await dialog.Result;
+        if (!result!.Canceled)
+        {
+            await Db.SaveAsync((Models.Note)result.Data!);
+            await Load();
+        }
+    }
+
+    async Task DeleteNote(Models.Note note)
+    {
+        await Db.DeleteAsync(note);
+        await Load();
+    }
+
+    async Task TogglePin(Models.Note note)
+    {
+        note.Pinned = !note.Pinned;
+        await Db.SaveAsync(note);
+        await Load();
+    }
+}

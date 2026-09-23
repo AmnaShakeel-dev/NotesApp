@@ -1,0 +1,35 @@
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="Note.Title" Label="Title" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="Note.Content" Label="Note" Lines="5" Variant="Variant.Outlined" Class="mb-3" />
+        <MudSelect @bind-Value="Note.Category" Label="Category" Variant="Variant.Outlined" Class="mb-3">
+            <MudSelectItem Value="@("General")">General</MudSelectItem>
+            <MudSelectItem Value="@("Study")">Study</MudSelectItem>
+            <MudSelectItem Value="@("Work")">Work</MudSelectItem>
+            <MudSelectItem Value="@("Personal")">Personal</MudSelectItem>
+        </MudSelect>
+        <MudText Typo="Typo.body2" Class="mb-1">Card color</MudText>
+        <div class="d-flex gap-2">
+            @foreach (var c in _palette)
+            {
+                <div @onclick="() => Note.Color = c" style="width:32px;height:32px;border-radius:50%;background:@c;
+                    cursor:pointer;border:@(Note.Color == c ? "3px solid #333" : "1px solid #ccc")">
+                </div>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Models.Note Note { get; set; } = new();
+
+    string[] _palette = { "#FFF59D", "#AED581", "#81D4FA", "#F48FB1", "#CE93D8", "#FFAB91" };
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(Note));
+    void Cancel() => MudDialog.Cancel();
+}
